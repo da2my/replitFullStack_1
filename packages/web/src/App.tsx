@@ -1,27 +1,75 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Button, formatDate } from '@monorepo/shared';
+import { Button, Text, Container, ThemeProvider, formatDate, useTheme } from '@monorepo/shared';
 
 function HomePage() {
+  const { theme, isDark, toggleTheme } = useTheme();
+  
   return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold mb-4">Web Frontend</h1>
-      <p className="text-lg text-gray-600 mb-6">
-        React application using shared components and utilities.
-      </p>
-      <Button onClick={() => alert(`Current time: ${formatDate(new Date())}`)}>
-        Test Shared Utils
-      </Button>
-    </div>
+    <Container padding="lg" backgroundColor={theme.colors.background}>
+      <Text variant="title" color="primary" testID="web-title">
+        Web Frontend
+      </Text>
+      <Text variant="body" color="secondary" testID="web-description">
+        React application using shared cross-platform components and utilities.
+      </Text>
+      
+      <div style={{ marginTop: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+        <Button 
+          onPress={() => alert(`Current time: ${formatDate(new Date())}`)}
+          variant="primary"
+          testID="test-date-button"
+        >
+          Test Date Utils
+        </Button>
+        
+        <Button 
+          onPress={toggleTheme}
+          variant="secondary"
+          testID="toggle-theme-button"
+        >
+          Toggle Theme ({isDark ? 'Dark' : 'Light'})
+        </Button>
+        
+        <Button 
+          onPress={() => alert('Cross-platform component working!')}
+          variant="outline"
+          testID="cross-platform-button"
+        >
+          Cross-Platform Test
+        </Button>
+      </div>
+
+      <Container margin="md" padding="md" backgroundColor={theme.colors.surface}>
+        <Text variant="subtitle" color="primary">
+          Cross-Platform Design Features:
+        </Text>
+        <Text variant="body" color="secondary">
+          ✓ Shared components that adapt to web and mobile
+        </Text>
+        <Text variant="body" color="secondary">
+          ✓ Unified theme system
+        </Text>
+        <Text variant="body" color="secondary">
+          ✓ Platform-specific optimizations
+        </Text>
+        <Text variant="body" color="secondary">
+          ✓ Consistent API across platforms
+        </Text>
+      </Container>
+    </Container>
   );
 }
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-      </Routes>
-    </Router>
+    <ThemeProvider initialTheme="system">
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 

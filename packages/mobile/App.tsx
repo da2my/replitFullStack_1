@@ -1,9 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { formatDate, validateEmail } from '@monorepo/shared';
+import { Alert } from 'react-native';
+import { 
+  Button, 
+  Text, 
+  Container, 
+  ThemeProvider, 
+  useTheme,
+  formatDate, 
+  validateEmail 
+} from '@monorepo/shared';
 
-export default function App() {
-  const handlePress = () => {
+function HomeScreen() {
+  const { theme, isDark, toggleTheme } = useTheme();
+
+  const handleDateTest = () => {
     Alert.alert('Shared Utils', `Current time: ${formatDate(new Date())}`);
   };
 
@@ -13,53 +23,103 @@ export default function App() {
     Alert.alert('Email Validation', `${email} is ${isValid ? 'valid' : 'invalid'}`);
   };
 
+  const testCrossPlatform = () => {
+    Alert.alert(
+      'Cross-Platform Success!', 
+      'This same component code runs on both web and mobile platforms.'
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Mobile App</Text>
-      <Text style={styles.subtitle}>
-        React Native application using shared utilities.
+    <Container flex center padding="lg" backgroundColor={theme.colors.background}>
+      <Text variant="title" color="primary" testID="mobile-title">
+        Mobile App
       </Text>
       
-      <TouchableOpacity style={styles.button} onPress={handlePress}>
-        <Text style={styles.buttonText}>Test Date Formatter</Text>
-      </TouchableOpacity>
+      <Text 
+        variant="body" 
+        color="secondary" 
+        align="center"
+        testID="mobile-description"
+      >
+        React Native application using shared cross-platform components and utilities.
+      </Text>
       
-      <TouchableOpacity style={styles.button} onPress={testEmail}>
-        <Text style={styles.buttonText}>Test Email Validator</Text>
-      </TouchableOpacity>
-    </View>
+      <Container padding="md">
+        <Button 
+          onPress={handleDateTest}
+          variant="primary"
+          size="lg"
+          fullWidth
+          testID="test-date-button"
+        >
+          Test Date Utils
+        </Button>
+        
+        <Container margin="sm">
+          <Button 
+            onPress={testEmail}
+            variant="secondary"
+            size="lg"
+            fullWidth
+            testID="test-email-button"
+          >
+            Test Email Validator
+          </Button>
+        </Container>
+        
+        <Button 
+          onPress={toggleTheme}
+          variant="outline"
+          size="lg"
+          fullWidth
+          testID="toggle-theme-button"
+        >
+          Toggle Theme ({isDark ? 'Dark' : 'Light'})
+        </Button>
+        
+        <Container margin="sm">
+          <Button 
+            onPress={testCrossPlatform}
+            variant="primary"
+            size="lg"
+            fullWidth
+            testID="cross-platform-button"
+          >
+            Cross-Platform Test
+          </Button>
+        </Container>
+      </Container>
+
+      <Container 
+        margin="md" 
+        padding="md" 
+        backgroundColor={theme.colors.surface}
+      >
+        <Text variant="subtitle" color="primary" align="center">
+          Cross-Platform Design Features:
+        </Text>
+        <Text variant="body" color="secondary" align="center">
+          ✓ Same components, different platforms
+        </Text>
+        <Text variant="body" color="secondary" align="center">
+          ✓ Unified theme system
+        </Text>
+        <Text variant="body" color="secondary" align="center">
+          ✓ Platform-optimized rendering
+        </Text>
+        <Text variant="body" color="secondary" align="center">
+          ✓ Consistent user experience
+        </Text>
+      </Container>
+    </Container>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+export default function App() {
+  return (
+    <ThemeProvider initialTheme="system">
+      <HomeScreen />
+    </ThemeProvider>
+  );
+}
