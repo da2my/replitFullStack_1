@@ -154,10 +154,10 @@ Comprehensive PostgreSQL schema with Drizzle ORM:
 ## Available Scripts
 
 ### Development
-- `npm run dev` - Start all development servers
-- `npm run web` - Start web development server only  
-- `npm run mobile` - Start mobile development with Expo
-- `npm run backend` - Start FastAPI backend server
+- `npm run dev` - Start Node.js development server (current implementation)
+- `./start-web.sh` - Start optimized React web frontend on port 3000
+- `cd packages/mobile && npm start` - Start mobile development with Expo
+- `cd packages/backend && python main.py` - Start FastAPI backend server
 
 ### Database
 - `npm run db:push` - Push database schema changes
@@ -171,12 +171,12 @@ Comprehensive PostgreSQL schema with Drizzle ORM:
 ## Technology Stack
 
 ### Frontend
-- **React 18** with TypeScript and hot reload
-- **React Native** with Expo for mobile development
-- **Vite** for lightning-fast development builds
-- **Tailwind CSS** for utility-first styling
+- **React Web App** (packages/web/): Optimized ReactJS with Vite, TypeScript, TanStack Query
+- **React Native App** (packages/mobile/): Expo-based mobile application
+- **Current Web** (client/): Legacy implementation, use packages/web/ for new development
+- **Tailwind CSS** for utility-first styling across all frontends
 - **Radix UI** for accessible component primitives
-- **Wouter** for lightweight routing
+- **Cross-platform Components** via shared package
 
 ### Backend  
 - **FastAPI** (Python) - Primary API with auto-documentation

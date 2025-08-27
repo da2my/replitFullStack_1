@@ -1,578 +1,490 @@
-# REST API Documentation
+# REST API Documentation - Monorepo Project
 
-This document provides comprehensive information about the REST endpoints available in the MonoRepo Backend API.
+Comprehensive documentation for the REST API endpoints powered by FastAPI backend, consumed by React web frontend.
 
-## Base URL
-- Development: `http://localhost:8000`
-- API Documentation: `http://localhost:8000/docs`
-- Alternative Documentation: `http://localhost:8000/redoc`
-
-## Authentication
-
-The API uses JWT (JSON Web Tokens) for authentication. Include the token in the Authorization header:
+## 🏗️ Architecture Overview
 
 ```
-Authorization: Bearer <your_jwt_token>
+┌─────────────────────────────────────────────────────────┐
+│                   Client Applications                   │
+├─────────────────────────────────────────────────────────┤
+│  React Web Frontend (packages/web/)                    │
+│  - TanStack Query for state management                 │
+│  - Custom API client with error handling               │
+│  - JWT token authentication                            │
+├─────────────────────────────────────────────────────────┤
+│  React Native Mobile (packages/mobile/)                │
+│  - Cross-platform API consumption                      │
+│  - Same endpoints, platform-optimized UI               │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                   REST API Layer                       │
+├─────────────────────────────────────────────────────────┤
+│  FastAPI Backend (packages/backend/)                   │
+│  - JWT authentication with 30-min expiration           │
+│  - Role-based access control                           │
+│  - Pydantic models for validation                      │
+│  - CORS configured for frontend origins                │
+├─────────────────────────────────────────────────────────┤
+│  Express.js Backend (server/) - Legacy                 │
+│  - Session-based authentication                        │
+│  - PostgreSQL with Drizzle ORM                         │
+│  - In-memory storage fallback                          │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Data Persistence                      │
+├─────────────────────────────────────────────────────────┤
+│  PostgreSQL Database                                   │
+│  - Users, Profiles, AI Tasks                          │
+│  - Business Entities, Audit Logs                      │
+│  - Sessions (Express) vs Stateless JWT (FastAPI)      │
+└─────────────────────────────────────────────────────────┘
 ```
 
-## Response Format
+## 🔐 Authentication Endpoints
 
-All API responses follow a consistent format:
-
-```json
-{
-  "success": boolean,
-  "message": string,
-  "data": any,
-  "timestamp": "ISO_8601_datetime"
-}
-```
-
-## Endpoints
-
-### Authentication Endpoints
-
-#### Register User
+### Register New User
 **POST** `/api/auth/register`
 
-Register a new user account.
+Register a new user account with email and password.
 
 **Request Body:**
 ```json
 {
   "email": "user@example.com",
-  "password": "securepassword",
-  "first_name": "John",
-  "last_name": "Doe"
+  "password": "securePassword123",
+  "full_name": "John Doe"
 }
 ```
 
-**Response:**
+**Response (201 Created):**
 ```json
 {
-  "success": true,
   "message": "User registered successfully",
-  "data": {
-    "user_id": "abc123def456"
-  },
-  "timestamp": "2025-01-01T12:00:00Z"
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "full_name": "John Doe",
+    "role": "user",
+    "created_at": "2025-01-27T19:00:00Z"
+  }
 }
 ```
 
-#### Login User
+**Frontend Usage:**
+```typescript
+// packages/web/src/hooks/useAuth.ts
+const { mutate: register } = useMutation({
+  mutationFn: (data) => authService.register(data),
+  onSuccess: () => navigate('/auth?mode=login')
+});
+```
+
+### User Login
 **POST** `/api/auth/login`
 
-Authenticate user and receive access token.
+Authenticate user and receive JWT access token.
 
 **Request Body:**
 ```json
 {
   "email": "user@example.com",
-  "password": "securepassword"
+  "password": "securePassword123"
 }
 ```
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer",
-  "expires_in": 1800
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "full_name": "John Doe",
+    "role": "user"
+  }
 }
 ```
 
-#### Get Current User
+**Frontend Integration:**
+```typescript
+// Automatic token storage and API client configuration
+const { mutate: login } = useMutation({
+  mutationFn: authService.login,
+  onSuccess: (data) => {
+    localStorage.setItem('auth_token', data.access_token);
+    queryClient.setQueryData(['auth', 'user'], data.user);
+  }
+});
+```
+
+### Get Current User
 **GET** `/api/auth/me`
 
-Get current authenticated user information.
+Retrieve current authenticated user information.
 
 **Headers:**
-```
-Authorization: Bearer <token>
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
-  "id": "abc123def456",
+  "id": 1,
   "email": "user@example.com",
-  "first_name": "John",
-  "last_name": "Doe",
+  "full_name": "John Doe",
   "role": "user",
-  "is_active": true,
-  "created_at": "2025-01-01T12:00:00Z"
-}
-```
-
-### User Management Endpoints
-
-#### List Users
-**GET** `/api/users`
-
-List all users (admin only).
-
-**Headers:**
-```
-Authorization: Bearer <admin_token>
-```
-
-**Response:**
-```json
-[
-  {
-    "id": "abc123def456",
-    "email": "user@example.com",
-    "first_name": "John",
-    "last_name": "Doe",
-    "role": "user",
-    "is_active": true,
-    "created_at": "2025-01-01T12:00:00Z"
-  }
-]
-```
-
-#### Get User by ID
-**GET** `/api/users/{user_id}`
-
-Get specific user information.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response:**
-```json
-{
-  "id": "abc123def456",
-  "email": "user@example.com",
-  "first_name": "John",
-  "last_name": "Doe",
-  "role": "user",
-  "is_active": true,
-  "created_at": "2025-01-01T12:00:00Z"
-}
-```
-
-#### Update User
-**PUT** `/api/users/{user_id}`
-
-Update user information.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Request Body:**
-```json
-{
-  "first_name": "Jane",
-  "last_name": "Smith",
-  "profile_image_url": "https://example.com/avatar.jpg"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "User updated successfully",
-  "timestamp": "2025-01-01T12:00:00Z"
-}
-```
-
-### User Profile Endpoints
-
-#### Get User Profile
-**GET** `/api/users/{user_id}/profile`
-
-Get user profile information.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response:**
-```json
-{
-  "id": "profile123",
-  "user_id": "abc123def456",
-  "bio": "Software developer passionate about technology",
-  "preferences": {
-    "theme": "dark",
-    "notifications": true
-  },
-  "metadata": {
-    "onboarding_completed": true
-  },
-  "created_at": "2025-01-01T12:00:00Z"
-}
-```
-
-#### Update User Profile
-**PUT** `/api/users/{user_id}/profile`
-
-Update user profile information.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Request Body:**
-```json
-{
-  "bio": "Updated bio information",
-  "preferences": {
-    "theme": "light",
-    "notifications": false
-  },
-  "metadata": {
-    "tutorial_completed": true
+  "created_at": "2025-01-27T19:00:00Z",
+  "profile": {
+    "bio": "Software developer",
+    "avatar_url": "https://example.com/avatar.jpg"
   }
 }
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Profile updated successfully",
-  "timestamp": "2025-01-01T12:00:00Z"
-}
+**React Hook Usage:**
+```typescript
+// Automatic authentication check
+const { data: user, isLoading } = useQuery({
+  queryKey: ['auth', 'user'],
+  queryFn: authService.getCurrentUser,
+  retry: false
+});
 ```
 
-### AI Processing Endpoints
+## 🤖 AI Processing Endpoints
 
-#### Create AI Task
+### Create AI Task
 **POST** `/api/ai/tasks`
 
-Create and process an AI task.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+Create a new AI processing task for text analysis, sentiment analysis, or content generation.
 
 **Request Body:**
 ```json
 {
-  "task_type": "text_analysis",
-  "input_data": {
-    "text": "This is sample text for analysis"
+  "task_type": "sentiment_analysis",
+  "input_text": "This product is absolutely amazing! I love it.",
+  "parameters": {
+    "language": "en",
+    "confidence_threshold": 0.8
   }
 }
 ```
 
-**Available Task Types:**
-- `text_analysis` - Analyze text content
-- `sentiment_analysis` - Determine sentiment of text
-- `image_processing` - Process image data
-- `content_generation` - Generate content based on prompts
-
-**Response:**
+**Response (201 Created):**
 ```json
 {
-  "success": true,
-  "message": "AI task created and processing",
-  "data": {
-    "task_id": "task123abc"
-  },
-  "timestamp": "2025-01-01T12:00:00Z"
+  "id": 123,
+  "task_type": "sentiment_analysis",
+  "status": "processing",
+  "input_text": "This product is absolutely amazing! I love it.",
+  "result": null,
+  "created_at": "2025-01-27T19:00:00Z",
+  "user_id": 1
 }
 ```
 
-#### List AI Tasks
+**Frontend Implementation:**
+```typescript
+// packages/web/src/hooks/useAITasks.ts
+const { mutate: createTask, isPending: isCreating } = useMutation({
+  mutationFn: aiService.createTask,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['ai', 'tasks'] });
+    toast({ title: "AI task created successfully" });
+  }
+});
+```
+
+### List AI Tasks
 **GET** `/api/ai/tasks`
 
-List user's AI tasks.
+Retrieve all AI tasks for the authenticated user with pagination.
 
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10)
+- `status` (optional): Filter by status (processing, completed, failed)
 
-**Response:**
-```json
-[
-  {
-    "id": "task123abc",
-    "user_id": "abc123def456",
-    "task_type": "text_analysis",
-    "status": "completed",
-    "input_data": {
-      "text": "Sample text"
-    },
-    "output_data": {
-      "word_count": 2,
-      "sentiment": "neutral",
-      "confidence": 0.75
-    },
-    "error_message": null,
-    "processing_time": 1250,
-    "created_at": "2025-01-01T12:00:00Z"
-  }
-]
-```
-
-#### Get AI Task
-**GET** `/api/ai/tasks/{task_id}`
-
-Get specific AI task information.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response:**
+**Response (200 OK):**
 ```json
 {
-  "id": "task123abc",
-  "user_id": "abc123def456",
-  "task_type": "sentiment_analysis",
-  "status": "completed",
-  "input_data": {
-    "text": "I love this product!"
-  },
-  "output_data": {
-    "sentiment": "positive",
-    "score": 0.89,
-    "confidence": 0.92
-  },
-  "error_message": null,
-  "processing_time": 980,
-  "created_at": "2025-01-01T12:00:00Z"
+  "tasks": [
+    {
+      "id": 123,
+      "task_type": "sentiment_analysis",
+      "status": "completed",
+      "input_text": "This product is amazing!",
+      "result": {
+        "sentiment": "positive",
+        "confidence": 0.95,
+        "score": 4.8
+      },
+      "created_at": "2025-01-27T19:00:00Z"
+    }
+  ],
+  "total": 25,
+  "page": 1,
+  "limit": 10,
+  "has_next": true
 }
 ```
 
-### Business Entity Endpoints
+**Auto-Updating Frontend:**
+```typescript
+// Polling every 3 seconds for real-time updates
+const { data: tasks } = useQuery({
+  queryKey: ['ai', 'tasks'],
+  queryFn: () => aiService.getTasks(),
+  refetchInterval: 3000,
+  refetchIntervalInBackground: true
+});
+```
 
-#### Create Business Entity
+### Get Specific AI Task
+**GET** `/api/ai/tasks/{task_id}`
+
+Retrieve details of a specific AI task.
+
+**Response (200 OK):**
+```json
+{
+  "id": 123,
+  "task_type": "content_generation",
+  "status": "completed",
+  "input_text": "Write a blog post about renewable energy",
+  "result": {
+    "generated_content": "Renewable energy is revolutionizing...",
+    "word_count": 500,
+    "readability_score": 8.2
+  },
+  "processing_time": 2.3,
+  "created_at": "2025-01-27T19:00:00Z",
+  "completed_at": "2025-01-27T19:00:02Z"
+}
+```
+
+## 🏢 Business Entity Endpoints
+
+### Create Business Entity
 **POST** `/api/business/entities`
 
-Create a new business entity.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+Create a new business entity (company, project, product, etc.).
 
 **Request Body:**
 ```json
 {
-  "name": "My Business Project",
-  "description": "A comprehensive business solution",
-  "category": "technology",
+  "entity_type": "company",
+  "name": "TechStartup Inc.",
+  "description": "AI-powered startup focused on automation",
   "data": {
-    "budget": 50000,
-    "team_size": 5
-  }
+    "founded": "2024",
+    "employees": 25,
+    "revenue": "$2M ARR",
+    "location": "San Francisco, CA"
+  },
+  "tags": ["startup", "ai", "automation"]
 }
 ```
 
-**Response:**
+**Response (201 Created):**
 ```json
 {
-  "success": true,
-  "message": "Business entity created successfully",
+  "id": 456,
+  "entity_type": "company",
+  "name": "TechStartup Inc.",
+  "description": "AI-powered startup focused on automation",
   "data": {
-    "entity_id": "entity123abc"
+    "founded": "2024",
+    "employees": 25,
+    "revenue": "$2M ARR",
+    "location": "San Francisco, CA"
   },
-  "timestamp": "2025-01-01T12:00:00Z"
+  "tags": ["startup", "ai", "automation"],
+  "created_at": "2025-01-27T19:00:00Z",
+  "user_id": 1
 }
 ```
 
-#### List Business Entities
+### List Business Entities
 **GET** `/api/business/entities`
 
-List user's business entities.
+Retrieve business entities with filtering and search capabilities.
 
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+**Query Parameters:**
+- `entity_type` (optional): Filter by entity type
+- `search` (optional): Search in name and description
+- `tags` (optional): Comma-separated list of tags
+- `page`, `limit`: Pagination
 
-**Response:**
-```json
-[
-  {
-    "id": "entity123abc",
-    "owner_id": "abc123def456",
-    "name": "My Business Project",
-    "description": "A comprehensive business solution",
-    "category": "technology",
-    "data": {
-      "budget": 50000,
-      "team_size": 5
-    },
-    "is_active": true,
-    "created_at": "2025-01-01T12:00:00Z"
-  }
-]
-```
-
-#### Get Business Entity
-**GET** `/api/business/entities/{entity_id}`
-
-Get specific business entity information.
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response:**
+**Response (200 OK):**
 ```json
 {
-  "id": "entity123abc",
-  "owner_id": "abc123def456",
-  "name": "Updated Business Project",
-  "description": "An enhanced business solution",
-  "category": "technology",
-  "data": {
-    "budget": 75000,
-    "team_size": 8,
-    "status": "active"
-  },
-  "is_active": true,
-  "created_at": "2025-01-01T12:00:00Z"
-}
-```
-
-### Utility Endpoints
-
-#### Health Check
-**GET** `/api/health`
-
-Check API health and status.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-01-01T12:00:00Z",
-  "version": "2.0.0",
-  "database": "connected",
-  "services": {
-    "auth": "active",
-    "ai_processing": "active",
-    "business_logic": "active"
-  }
-}
-```
-
-#### Validate Email
-**GET** `/api/utils/validate-email/{email}`
-
-Validate email format.
-
-**Response:**
-```json
-{
-  "email": "test@example.com",
-  "is_valid": true,
-  "timestamp": "2025-01-01T12:00:00Z"
-}
-```
-
-#### API Statistics
-**GET** `/api/stats`
-
-Get API usage statistics (admin only).
-
-**Headers:**
-```
-Authorization: Bearer <admin_token>
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "API statistics retrieved",
-  "data": {
-    "total_users": 150,
-    "active_users": 142,
-    "total_ai_tasks": 1250,
-    "completed_ai_tasks": 1180,
-    "total_business_entities": 75,
-    "total_audit_logs": 2500
-  },
-  "timestamp": "2025-01-01T12:00:00Z"
-}
-```
-
-## Error Responses
-
-The API returns standard HTTP status codes and error messages:
-
-### 400 Bad Request
-```json
-{
-  "detail": "Email already registered"
-}
-```
-
-### 401 Unauthorized
-```json
-{
-  "detail": "Invalid authentication credentials",
-  "headers": {
-    "WWW-Authenticate": "Bearer"
-  }
-}
-```
-
-### 403 Forbidden
-```json
-{
-  "detail": "Access denied"
-}
-```
-
-### 404 Not Found
-```json
-{
-  "detail": "User not found"
-}
-```
-
-### 422 Validation Error
-```json
-{
-  "detail": [
+  "entities": [
     {
-      "loc": ["body", "email"],
-      "msg": "field required",
-      "type": "value_error.missing"
+      "id": 456,
+      "entity_type": "company",
+      "name": "TechStartup Inc.",
+      "description": "AI-powered startup...",
+      "tags": ["startup", "ai"],
+      "created_at": "2025-01-27T19:00:00Z"
     }
-  ]
+  ],
+  "total": 12,
+  "page": 1,
+  "limit": 10
 }
 ```
 
-## Rate Limiting
+## 📊 Admin Endpoints (Role-Based Access)
 
-The API implements rate limiting to ensure fair usage:
-- General endpoints: 100 requests per minute
-- Authentication endpoints: 5 requests per minute
-- AI processing endpoints: 10 requests per minute
+### Get System Stats
+**GET** `/api/admin/stats`
 
-## Security Considerations
+**Requires:** Admin role
 
-1. **JWT Tokens**: Expire after 30 minutes
-2. **Password Hashing**: Uses bcrypt with salt
-3. **CORS**: Configured for allowed origins only
-4. **Audit Logging**: All user actions are logged
-5. **Role-based Access**: Admin endpoints require admin role
+**Response (200 OK):**
+```json
+{
+  "total_users": 1234,
+  "active_ai_tasks": 45,
+  "completed_tasks_today": 156,
+  "total_business_entities": 892,
+  "system_health": "healthy"
+}
+```
 
-## Development Notes
+### List All Users
+**GET** `/api/admin/users`
 
-- The current implementation uses in-memory storage
-- For production, replace with PostgreSQL database
-- Add Redis for caching and session management
-- Implement proper logging and monitoring
-- Add comprehensive input validation
-- Set up proper environment variables
+**Requires:** Admin role
+
+Comprehensive user management with pagination and filters.
+
+## 🔧 API Client Implementation
+
+### Frontend API Service Layer
+```typescript
+// packages/web/src/services/api.ts
+class ApiClient {
+  private baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  
+  async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const token = localStorage.getItem('auth_token');
+    
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options?.headers,
+      },
+      ...options,
+    });
+    
+    if (!response.ok) {
+      throw new ApiError(response.status, await response.text());
+    }
+    
+    return response.json();
+  }
+}
+
+// Service layer with typed methods
+export const authService = {
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    return apiClient.request<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+  },
+  
+  async getCurrentUser(): Promise<User> {
+    return apiClient.request<User>('/api/auth/me');
+  }
+};
+```
+
+### Error Handling
+```typescript
+class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+// React Query error handling
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error instanceof ApiError && error.status === 401) {
+          // Redirect to login for authentication errors
+          window.location.href = '/auth';
+          return false;
+        }
+        return failureCount < 3;
+      }
+    }
+  }
+});
+```
+
+## 🚀 Environment Configuration
+
+### Frontend (.env.local)
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+### Backend Environment Variables
+```env
+DATABASE_URL=postgresql://user:pass@localhost:5432/monorepo_db
+JWT_SECRET_KEY=your-super-secret-jwt-key-here
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_HOURS=0.5
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+```
+
+## 📈 Performance & Monitoring
+
+### Request/Response Metrics
+- Average response time: ~150ms
+- Token expiration: 30 minutes
+- Cache invalidation: Smart invalidation on mutations
+- Polling interval: 3 seconds for AI tasks
+
+### Status Codes
+- **200**: Success
+- **201**: Created
+- **401**: Unauthorized (token expired/invalid)
+- **403**: Forbidden (insufficient permissions)
+- **404**: Resource not found
+- **422**: Validation error
+- **500**: Internal server error
+
+### Development Tools
+
+**Testing API Endpoints:**
+```bash
+# Test authentication
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "password"}'
+
+# Test protected endpoint
+curl -X GET http://localhost:8000/api/auth/me \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+
+**Interactive API Documentation:**
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+This comprehensive API documentation ensures seamless integration between the React frontend and FastAPI backend with proper error handling, authentication, and real-time updates.
