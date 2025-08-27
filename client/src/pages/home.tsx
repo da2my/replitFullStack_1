@@ -82,13 +82,13 @@ export default function Home() {
             Shared utilities, consistent development experience, and streamlined deployment.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="px-8 py-3" data-testid="button-get-started">
-              <Download className="w-4 h-4 mr-2" />
-              Get Started
+            <Button size="lg" className="px-8 py-3" data-testid="button-get-started" onClick={() => window.location.href = '/auth'}>
+              <Rocket className="w-4 h-4 mr-2" />
+              Acceder al Servicio
             </Button>
             <Button variant="outline" size="lg" className="px-8 py-3" data-testid="button-documentation">
               <Book className="w-4 h-4 mr-2" />
-              Documentation
+              Documentación
             </Button>
           </div>
         </div>
